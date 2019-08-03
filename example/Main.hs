@@ -12,6 +12,7 @@ import qualified Graphics.Vty as V
 
 import Control.Monad (void)
 import Control.Concurrent (forkFinally)
+import Control.Exception (SomeException)
 import Control.Monad.IO.Class (liftIO)
 
 data Event = FromHBWidget HB.ToBrick | HaskelineDied (Either SomeException ())
@@ -67,7 +68,9 @@ main = do
     _ <- forkFinally
             (runHaskeline config)
             (writeBChan chan . HaskelineDied)
+    initialVty <- V.mkVty V.defaultConfig
     void $ customMain
+        initialVty
         (V.mkVty V.defaultConfig)
         (Just chan)
         (app config)

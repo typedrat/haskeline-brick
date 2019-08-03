@@ -11,6 +11,7 @@ module System.Console.Haskeline.Brick ( configure
                                       ) where
 
 import System.Console.Haskeline.Internal
+import Control.Monad.Catch
 
 import qualified Control.Monad.Trans.Reader as Reader
 
@@ -20,8 +21,10 @@ import qualified Brick.BChan as BC
 import qualified Graphics.Vty as V
 
 import Control.Concurrent
+import Control.Monad.STM ( atomically )
+import Control.Concurrent.STM.TChan (TChan, newTChanIO, readTChan, writeTChan)
 
-data Config e = MkConfig { fromBrickChan :: Chan Event
+data Config e = MkConfig { fromBrickChan :: TChan Event
                          , toAppChan :: BC.BChan e
                          , toAppEventType :: ToBrick -> e
                          , fromAppEventType :: e -> Maybe ToBrick
@@ -39,7 +42,7 @@ configure :: BC.BChan e
           -> (e -> Maybe ToBrick)
           -> IO (Config e)
 configure toAppChan' toAppEventType' fromAppEventType' = do
-    ch <- newChan
+    ch <- newTChanIO
     return $ MkConfig { fromBrickChan = ch
                       , toAppChan = toAppChan'
                       , toAppEventType = toAppEventType'
@@ -98,7 +101,7 @@ handleEvent c w (AppEvent e) =
       Nothing -> return w
 
 handleEvent c w (VtyEvent (V.EvKey k ms)) = do
-    liftIO $ writeChan (fromBrickChan c) $ mkKeyEvent k
+    liftIO $ atomically $ writeTChan (fromBrickChan c) $ mkKeyEvent k
     return w
         where
             mkKeyEvent :: V.Key -> Event
@@ -149,7 +152,7 @@ brickRunTerm c = do
                        , saveUnusedKeys = saveKeys (fromBrickChan c)
                        , evalTerm = evalBrickTerm c
                        , externalPrint =
-                           writeChan (fromBrickChan c) . ExternalPrint
+                           atomically . writeTChan (fromBrickChan c) . ExternalPrint
                        }
     return $ RunTerm { putStrOut = putStrOut'
                      , termOps = Left tops
@@ -174,11 +177,12 @@ brickRunTerm c = do
 
             withGetEvent' :: forall m a . CommandMonad m
                           => (m Event -> m a) -> m a
-            withGetEvent' f = f $ liftIO $ readChan (fromBrickChan c)
+            withGetEvent' f = f $ liftIO $ atomically $ readTChan (fromBrickChan c)
 
 newtype BrickTerm m a =
     MkBrickTerm { unBrickTerm :: ReaderT (ToBrick -> IO ()) m a }
-    deriving ( MonadException, MonadIO, Monad, Applicative, Functor
+    deriving ( MonadCatch, MonadThrow, MonadMask, MonadIO
+             , Monad, Applicative, Functor
              , MonadReader (ToBrick -> IO ())
              )
 
@@ -191,7 +195,7 @@ evalBrickTerm c = EvalTerm
     (MkBrickTerm . lift)
         where send = BC.writeBChan (toAppChan c) . toAppEventType c
 
-instance (MonadReader Layout m, MonadException m)
+instance (MonadReader Layout m, MonadIO m, MonadMask m)
   => Term (BrickTerm m) where
     reposition _ _ = return ()
     moveToNextLine _ = sendToBrick MoveToNextLine

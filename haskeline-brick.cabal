@@ -1,13 +1,13 @@
 name:                haskeline-brick
-version:             0.0.1
+version:             0.1.0.0
 -- synopsis:
 -- description:
-homepage:            https://github.com/rootmos/haskeline-brick#readme
+homepage:            https://github.com/typedrat/haskeline-brick#readme
 license:             BSD3
 license-file:        LICENSE
-author:              Gustav Behm
-maintainer:          gustav.behm@gmail.com
-copyright:           2017 Gustav Behm
+author:              Gustav Behm and Alexis Williams
+maintainer:          alexis@typedr.at
+copyright:           2017 Gustav Behm, 2019 Alexis Williams
 category:            User Interfaces
 build-type:          Simple
 extra-source-files:  README.md
@@ -19,8 +19,10 @@ library
   build-depends:       base >= 4.7 && < 5
                      , brick >= 0.18
                      , vty >= 5.16
-                     , haskeline
+                     , haskeline >= 0.8 && < 0.9
                      , transformers >= 0.2 && < 0.6
+                     , exceptions >= 0.10 && < 0.11
+                     , stm >= 2.4 && < 2.6
   default-language:    Haskell2010
 
 executable haskeline-brick-example
@@ -30,8 +32,8 @@ executable haskeline-brick-example
   build-depends:       base
                      , haskeline-brick
                      , haskeline
-                     , brick >= 0.18
-                     , vty >= 5.16
+                     , brick
+                     , vty
   default-language:    Haskell2010
 
 source-repository head

@@ -1,0 +1,6 @@
+packages: *.cabal
+
+source-repository-package
+    type: git
+    location: https://github.com/typedrat/haskeline.git
+    tag: 555c62e3f21bcb66b961336986bfc4aa324fa581
